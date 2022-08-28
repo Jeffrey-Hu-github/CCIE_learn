@@ -1,0 +1,88 @@
+
+
+理论基础：
+AS号1-65535，64512-65535私有AS
+基于tcp，端口号179，BGP邻居之间不需要直连
+使用环回口建立邻居（别忘了修改更新源为loopback，否则默认以出口地址通信）
+BGP邻居之间要有IGP的基础，网络首先要通才行
+EBGP管理距离20，IBGP 200
+IBGP一般使用环回口建立邻居
+EBGP一般采取直连来建立邻居，也可以使用环回口建立。但因为EBGP的TTL默认为1，使用neighbor a.b.c.d ebgp-multihop xx 来修改默认ttl，两边都要改
+
+如果BGP使用环回口进行建立邻居，环回口之间使用IGP通信，则BGP则不能宣告环回口，否则邻居会翻滚（EBGP路由matric更小）,导致环路
+上述在重分布时候要小心（不要把环回口宣告进去）。（通常EBGP之间都是直连，不会出现IGP）
+
+Open  协商能力值
+Update 更新路由信息
+notification 报错
+keepalive 保活
+router fresh 刷新路由（增量更新）
+
+idle 准备资源
+connenct 开始建立TCP邻居
+active 反复建立TCP // 进入这个状态表示TCP建立没成功
+opensent 发送Open
+openconfirm 协商通过，keepalive
+established 建立邻居成功，同步路由信息
+
+邻居建立成功才开始发update。
+
+
+peer group 对等体组，邻居越多配置越快
+
+next-hop-self
+
+水平分割bgp：从IBGP学到的路由不会让传给ibgp
+打破：1.全互联
+2.RR 只在server上配，在RR上配置别人为自己的客户端，但是客户端自己不知道自己是客户端。
+3.联邦（配置麻烦，一开始规划好）
+
+同步规则（默认关闭）防止路由黑洞但解决不了，从EBGP邻居学到的邻居，必须IGP存在，否则不传给IBGP(IBGP有条目，但IBGP底层的IGP没有相关条目所以不可达)
+    解决黑洞方案1.MPLS vpn
+              2. 把BGP重分布进IGP
+
+
+汇总：默认不开
+
+默认路由下发：尽量不做，尤其是不对全局下发。可以向指定邻居下发一条默认路由 neighbor x.x.x.x default-originate
+OSPF 园区IGP可以做默认路由
+
+show ip bgp 
+show ip neighbor x.x.x.x advertised-routes //我给邻居通告了什么
+show ip neighbor x.x.x.x received-routes  //从邻居收到了哪些路由
+show ip bgp x.x.x.x/xx 查看具体条目信息
+
+clear ip bgp * soft 清楚bgp表，但不断邻居关系
+
+属性和选路
+BGP选路13条
+
+1、优选具有最大Weight值的路由
+
+2、优选具有最大Local_Preference值的路由（仅在IBGP对等体之间交换，不通告给其他AS）
+
+3、优选起源于本地的路由（如本地network、aggregate或redistribute的）即下一跳是0.0.0.0（在BGP表中，本路由器通告的路由的下一跳为0.0.0.0）
+
+4、优选AS-Path最短的路由
+
+5、Origin（IGP>EGP>incomplete）
+
+6、优选MED最小的路由，默认情况下仅有当所有备选路由来自同一AS才会比较MED
+
+7、优选EBGP邻居发来的路由（相对于IBGP邻居学过来的），在联邦EBGP和IBGP中首选联邦EBGP路由
+
+8、到next_hop都是最近和cost最小的（cost相同，选带宽最大的），
+
+9、执行等价负载均衡（如果有多条来自相同相邻AS的路由并通过Maximum-paths 使多条路径可用，则将所有开销相同的路由放入本地路由表）默认负载均衡没有开启
+
+10、优选最老的EBGP路由，EBGP路由接收的顺序（此条主要对EBGP路由起效，基本不用，不好确定）
+
+11、BGP邻居的RID越小越优先
+
+12、优选cluster_list最短的路由
+
+13、选择邻居IP地址（BGP的neighbor配置中的那个地址）最小的路由，有环回口优先比环回口，否则比其他接口中ip最小的。
+
+拓展AS号
+
+高级选路特性

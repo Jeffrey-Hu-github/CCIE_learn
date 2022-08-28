@@ -1,0 +1,77 @@
+
+show ip eigrp neighbor
+show ip eigrp topology
+show ip eigrp topology all-links
+
+EIGRP 修改管理距离
+
+    router eigrp 100
+    distance eigrp 99 199  //本地eigrp 内部AD值改为99，外部为199
+
+    router eigrp 100
+    distance 188 192.168.23.2 255.255.255.0 //修改来自于某一更新源（邻居）的路由条目的管理距离
+
+    access-list 1 permit 10.1.0.0 0.0.0.255
+    router eigrp 100
+    distance 66 192.168.12.1 0.0.0.0 1  //用ACL抓，改AD为66
+
+
+修改k值
+    metric weight tos K1 K2 K3 K4 K5
+
+
+eigrp邻居认证
+    R1(config)#key chain EIGRP			创建一个名叫EIGRP的钥匙串 
+    R1(config-keychain)#key 1			创建一个钥匙1
+    R1(config-keychain-key)#key-string cisco	创建一个钥匙字符串cisco（密码cisco）    
+    R1(config)#interface g0/0/0			进入g0/0/0
+    R1(config-if)#ip authentication key-chain eigrp 100 EIGRP	启用EIGRP认证
+    R1(config-if)#ip authentication mode eigrp 100 md5 			认证模式为MD5
+
+
+eigrp stub
+    eigrp stub {connected,static, receive-only,summary, redistribute} //Connected 只发送直连路由，static只发送静态路由
+            //summary只发送汇总路由，redistribute只发送重分发进eigrp的路由
+            //Receive-only，只接收不发送，这个开启其他都关闭
+            //默认开启直连和汇总
+
+eigrp 宣告
+    同OSPF，连接其他AS的接口不能宣告进EIGRP
+    交换机三层接口可以宣告进EIGRP，使用SVI， 三层交换机接口就是vlan名字 
+    int vlan 34
+        delay 100 //修改延迟，用于调整负载均衡，eigrp选路是基于入口，用 show int xx 查看两条路的选路参数。
+
+
+    router eigrp 34567
+    no auto-summary // 默认关闭
+    network 123.20.3.5 0.0.0.0
+    eigrp stub //设置为末节区域，后边有参数，也可以不加
+
+    router eigrp word //可以启这种命名式的eigrp实例
+    address-family ipv4 unicast autonomous-system 45678   //宽度量值64 bit 要在宣告之前写这个
+    network 123.20.1.2 0.0.0.0
+
+    show run | s r e
+
+
+问题%DUAL-6-NBRINFO: EIGRP-IPv4 34567: Neighbor 123.10.2.6 (Ethernet0/1) is blocked: not on common subnet (123.10.2.1/30)
+错误划分网段导致123.10.2.6 和 123.10.2.1/30接到一起了,检查vlan 划分
+
+
+三层交换机要把它想象成一个路由器加一个交换机，在计算负载时，只把SVI接口当成路由器，其他的二层部分不要管他怎么走的。
+
+负载均衡的延迟和带宽
+带宽取链路上的最小值
+延迟是接口延迟，不是链路延迟，延迟之和是取沿途更新入向接口延迟总和,这个入向是指路由条目扩散的方向，而不是指建立连接之后数据包的流向（这两个是相反的）
+举例子：A ——> B ——> C 这是我ping的时候的数据方向，但是如果我宣告C的路由，路由扩散方向是C———> B———> A,用这个方向来判断入口方向。
+SVI和Ethernet的延迟不同
+
+
+起不来邻居；
+    1. K值不匹配 Neighbor 145.67.89.17 (Ethernet0/0) is down: K-value mismatch // k值不相同,起不来邻居
+    2. 去接口看认证
+    3. 直连有没有问题
+    4. passive interface、接口没有宣告、acl
+
+    查看列表
+    show  run | s list 

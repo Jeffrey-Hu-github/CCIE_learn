@@ -1,0 +1,24 @@
+lsp 标签转发通道
+FEC转发等价类
+LSR 核心设备，只有标签交换和分发
+LER 标签边界网络，分发，交换和映射IP
+
+LDP协议
+
+
+show mpls ldp discovery //查看ldp邻居
+show mpls ldp bindings //查看LIB表（地址对应标签）
+show mpls interfaces
+show mpls forwarding-table  //查看LFIB标签转发数据库
+show mpls ip binding 
+show ip cef 6.6.6.6/32  //查看某一条路由下一跳
+
+cef 会包含ip和label
+
+ip cef  //默认开启
+mpls label protoctl ldp //默认开启
+mpls ldp router-id interface //设routerid
+mpls label range xx yy//范围默认是16开启，可以不配
+mpls ip //接口下开启mpls功能
+
+mpls ldp autoconfig //在ospf 进程下的所有接口都开启mpls ip

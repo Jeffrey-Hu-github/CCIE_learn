@@ -1,0 +1,49 @@
+EtherChannel(以太通道)也叫端口聚合或链路聚合
+http://t.zoukankan.com/qzqdy-p-8336986.html
+
+1.Pagp 思科私有
+主动：desirable 发送协商，也接收
+被动：auto 只接收，不发送
+只有auto会失败，其他三种组合都会成功
+
+int range f0/13 - 14
+    channel-protocol pagp
+    channel-group 1 mode desirable
+
+2.Lcap 公有协议
+active 主动，同desirable
+passive 被动，同auto
+只有双 passive 会失败
+
+int range f0/13 - 14
+    channel-protocol lacp
+    channel-group 1 mode active
+
+3.on
+两边都配on，强行起
+int range f0/13 - 14
+    channel-group 1 mode on
+
+
+
+
+EtherChannel默认情况下是基于源MAC地址的负载平衡；
+其他的负载均衡方式dst-ip、dst-mac、src-dst-ip、src-dst-mac、src-ip、src-mac ，默认src-mac ,在SW菜单#port-channel load-balance dst-ip
+cisco的交换机不仅可以支持第二层EtherChannel,还可以支持第三层EtherChannel。
+Cisco最多允许EtherChannel绑定8个端口；
+三层端口要先创建通道编号，2层设备不需要：int port-channel 1
+
+完整配置：
+int port-channel 1   //先声明一个号
+int range f0/13 - 14
+    switchport trunk encapsulation dot1q
+    switchport mode trunk
+    channel-group 1 mode on
+    switchport trunk allowed vlan all //可以禁用一些vlan或者只允许一些vlan
+    no shutdown
+port-channel load-balance dst-ip  //激活负载均衡
+
+之后进入接口直接int port-channel 1
+
+show etherchannel summary  // SU 表示正常
+show etherchannel port-channel

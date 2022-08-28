@@ -1,0 +1,59 @@
+
+vlan:
+
+    vlan 2-10
+    vlan 11,13,15,17,19
+    vlan 21-25,27,29
+
+interface fa 0/1
+    switchport mode access
+    switchport access vlan 10
+
+interface range f0/1-4,f0/9-12
+
+SVI:     //条件，这个vlan存在，并且至少有一个接口属于此vlan（trunk也算）
+    interface vlan 10
+        ip address 192.168.1.1 255.255.255.0
+
+
+trunk
+    ISL  cisco 支持pvst
+    dot1q 公有，在原始帧头中加入一个4字节的帧，有一个位置用于qos，native vlan 不会打tag， 默认vlan 1
+
+    interface fa 0/1
+    switchport trunk encapsulation dot1q/ISL
+    switchport mode trunk
+
+    switchport trunk native vlan // 修改就要trunk两端一起修改，否则报错。
+
+    switchport trunk allowed vlan 10,20  //管理 trunk上允许的vlan，默认1-4094都放行。
+    switchport trunk allowed add vlan 30
+    switchport trunk allowed remove vlan 30
+
+vtp （cisco私有）
+
+    Server mode：可以增加，删除，修改vlan，会传递给其他client
+    Client mode：不能增删改，修改vlan，只能接收server传过来的，但会传递给其他
+    Transparent：自己维护一套单独vlan表，不存server的vlan，但会转发。
+
+    show vtp status
+    show vtp password
+
+    vtp mode server/client/transparent  
+    vtp domain CCIE
+    vtp version 2
+    vtp password CCIErock$
+
+
+show run int e0/1  //查看端口配置
+SW: show run int vlan 100 //寻找dhcp在哪，找helper address中继到哪
+show run | s pool //在dhcp主机查看dhcp配置
+
+
+int ethernet 0/0
+    mac-address aaaa.bbbb.cccc //端口上修改mac地址
+
+client-identifier 01aa.bbcc.0021.11  //这个是给dhcp绑定用的，是01加上mac地址
+
+遇到路由不选择最近的线路，先看邻居有没有建立，如果邻居没有建立，看接口有没有宣告，如果都宣告了，看是不是cost被修改了。
+如果是三层交换机，看是否是vlan没有起来或没有配置。

@@ -1,0 +1,26 @@
+二层：
+    vlan
+    stp
+    cdp
+    trunk
+    ppp
+    etherchannel
+    port-security
+    HSRP
+    VxLAN（选）
+三层:
+    OSPF
+    EIGRP
+    重分发（分发列表，PBR）
+    BGP
+    ISIS（选）
+
+VPN:
+    IPsec VPN
+    MPLS VPN
+    DMVPN
+
+组播
+IPv6
+Qos
+SDWAN

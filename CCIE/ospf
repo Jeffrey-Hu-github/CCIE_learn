@@ -1,0 +1,11 @@
+show ip ospf int br 
+show ip ospf neighbor
+show run | s r o    //查看ospf 配置
+
+
+邻居双方，如果同一个网段相同，掩码不同，虽然可以ping 通，但是不能建邻居，要注意
+
+
+下发默认路由：
+    default-information originate
+    default-information originate always //不加always，本地必须存在默认路由

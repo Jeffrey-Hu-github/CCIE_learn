@@ -1,0 +1,138 @@
+show cdp neighbor
+分部分保存
+
+
+vtp
+    show vtp status
+    show vtp password
+
+    vtp mode server/client/transparent
+    vtp domain CCIE
+    vtp version 2
+    vtp password CCIErock$
+
+建议先配置trunk
+再配置vtp配置 //没有要求的建议配置为透明模式
+再配置vlan信息
+
+
+
+trunk
+    interface range e2/0 - 3
+        switchport trunk encapsulation dot1q
+        switchport mode trunk 
+        switchport nonegoniate    //不通过dtp来协商，两边都要开，要协商两边都要开。关闭协商两边都要配成trunk
+
+    show int trunk 
+
+
+vlan
+    vlan 23
+    vlan 34
+
+    show cdp neighbor | in R7     //找R7和我直连的接口，方便配vlan
+    interface e0/1
+    switchport mode access
+    switchport access vlan 23
+
+    show vlan brief   //vtp server 和透明模式需要手动配
+    show int vlan xx //三层
+
+
+    mac table
+    show mac address-table aging-time  //default 300s ,改大可以减少单播泛洪。
+
+
+stp     生成树，无法负载分担802.1d
+pvst    基于每一个vlan的一颗生成树，可以负载均衡，但有时候会导致交换机负载过大。只支持思科ISL链路， 默认是pvst
+rstp    --支持了三个特性，portfast uplinkfast backbonefast， 但还是一棵树
+pvst+ rpvst 在pvst基础上--支持了三个特性，portfast uplinkfast backbonefast，同时也支持dot1q，可以与其他厂商兼容了
+mst     多生成树，多实例的，可以把多个vlan加入一个实例（多厂商支持，用的最多的）
+
+    spanning-tree mode rapid-pvst //修改生成树模式
+    span vlan 1,15,23,35 root primary //设置这些vlan为主根桥
+    span vlan 14,24,46 root secondary //设置这些vlan为副根桥。
+    spanning-tree portfast default //开启portfast
+    spanning-tree portfast bpduguard default //开启bpdu防护,收到bpdu会变成disable，需要手动重启（shut no shut）。
+    spanning-tree guard root //开启根防护，拒绝新设备抢占根桥
+
+    show spanning-tree summary
+    show running-config |section span
+
+
+wan switch (二层广域网交换)：PPP
+
+    int s4/0  //在路由器端口配置
+        encapsulation ppp
+        ppp chap hostname ACME-R18
+        ppp chap password CCIE
+        no peer neighbor-route //ppp会默认产生一条直连主机路由（32位），开启这个会抑制那一条路由，而用默认的24位路由
+
+    show run interface s4/0  //注意查看用户名和密码
+
+
+OSPF
+
+    router ospf 12345
+    //先创建环回口
+    router-id 123.2.2.2   //router-id 应该是环回口ip
+    network 123.2.2.2 0.0.0.0 area 0 //宣告大部分接口，包括环回口，但不能宣告连接其他AS的接口，使用32位精确匹配
+
+    show ip route ospf
+    show ip ospf neighbor
+
+
+EIGRP
+
+    同OSPF，连接其他AS的接口不能宣告进EIGRP
+    交换机三层接口可以宣告进EIGRP，使用SVI， 三层交换机接口就是vlan名字 
+    int vlan 34
+        delay 100 //修改延迟，用于调整负载均衡，eigrp选路是基于入口，用 show int xx 查看两条路的选路参数。
+
+
+    router eigrp 34567
+    no auto-summary // 默认关闭
+    network 123.20.3.5 0.0.0.0
+    eigrp stub //设置为末节区域，后边有参数，也可以不加
+
+    router eigrp word //可以启这种命名式的eigrp实例
+    address-family ipv4 unicast autonomous-system 45678   //宽度量值64 bit 要在宣告之前写这个
+    network 123.20.1.2 0.0.0.0
+
+    show run | s r e
+
+
+DMVPN
+    建立tunnel ,也算一个接口, 在两端都要启，给两个同网段不同地址
+    interface tunnel 0
+        ip address 10.18.19.1 255.255.255.0
+
+
+BGP
+    router bgp 12345
+        bgp router-id 123.1.1.1  //一般用环回接口
+        no bgp default ipv4-unicast //不用单播，为了MPLS
+
+        neighbor iBGP peer-group  //1.使用 neighbor peer-group-name peer-group 来创建BGP对等体组，2.使用 neighbor peer-group-name 给对等体加上希望的参数. 3.使用 neighbor ip -address peer-group 将具有相同属性的BGP对等体放到一个组里。 目的是简化配置。
+        neighbor IBGP remote-as 12345
+        neighbor iBGP update-source lo0
+        neighbor iBGP next-hop-self     //同时连接外部AS的EBGP邻居和内部IBGP 邻居的路由器（边界），要开启这个命令。
+        neighbor 123.2.2.2 peer-group iBGP
+        neighbor 123.3.3.3 peer-group iBGP  //这两个要有相同的属性，比如都是路由反射器的client， 互为ibgp
+        neighbor 123.6.6.6 peer-group iBGP
+        neighbor 123.7.7.7 peer-group iBGP
+
+        aggregate-address 123.0.0.0 255.0.0.0 summary-only
+
+
+        address-family ipv4          //上面虽然把邻居宣告了，但是不会通，由于“no bgp default ipv4-unicast”命令的关系，虽然建立了全局BGP的邻居，但它是不会出现在任何地址族中的。如果想在ipv4或vpnv4中起效果，就得在地址族中用“nei 150.1.3.3 active”把邻居激活：
+            neighbor 123.2.2.2 activate
+            neighbor 123.3.3.3 activate
+            neighbor 123.6.6.6 activate
+            neighbor 123.7.7.7 activate
+            neighbor iBGP router-reflector-client //这个address family 中的东西都会默认从上面的继承，只要开启activate， 意思是这个peer group 里的人都是client
+
+        show run | b r b
+        show run | s r b  //router-id 汇总路由，默认路由
+        show ip bgp  //查看BGP表
+        show bgp all summary //查看EBGP和IBGP邻居

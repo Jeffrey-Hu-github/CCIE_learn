@@ -1,0 +1,97 @@
+
+
+认证方式有两种，一种是PAP明文，一种是CHAP密文。
+
+ppp 必须走串口，所以端口必须是serial 
+
+PAP 单向认证
+    验证方
+        username R2 password cisco     //相当于存储这条链路的用户名和密码
+        int s0/1
+            encapsulation ppp
+            ppp authentication pap 
+    被验证方（发起验证方，一般为客户端）
+        int s0/1
+        encapsulation ppp
+        ppp pap sent-username R2 password 0 cisco   //chap把这个命令拆分成了两条
+
+PAP 双向认证(互相存对方的信息，发送自己的信息)
+    验证方R1
+        username R2 password cisco
+        int s0/1
+            encapsulation ppp
+            ppp authentication pap     //只有验证方（验证服务器，要开启这个命令）
+            ppp pap sent-username R1 password 0 cisco
+    验证方R2
+        username R1 password cisco
+        int s0/1
+            encapsulation ppp
+            ppp authentication pap
+            ppp pap sent-username R2 password 0 cisco    //发起认证，如果不配置，默认用主机名和主机密码。
+
+chap单向
+    验证方R1
+        username R2 password cisco
+        int s0/1
+            encapsulation ppp
+            ppp authentication chap
+    被验证方R2
+        int s0/1
+            encapsulation ppp
+            ppp chap hostname R2 
+            ppp chap password 0 cisco
+
+chap双向 
+    验证方R1
+        username R2 password cisco
+        int s0/1
+            encapsulation ppp 
+            ppp authentication chap
+            ppp chap hostname R1       //这两条相当于用 R1/cisco 发起chap认证，如果不写这两条，默认用路由器的主机名和密码去发起认证
+            ppp chap password cisco
+    验证方R2 
+        username R1 password cisco
+        int s0/1
+            encapsulation ppp
+            ppp authentication chap
+            ppp chap hostname R2       //这两条相当于用 R1/cisco 发起chap认证，如果不写这两条，默认用路由器的主机名和密码去发起认证
+            ppp chap password cisco
+
+        
+
+PPPoE
+
+show pppoe session
+
+R1:PPPoE Client
+    interface Ethernet0/0
+    pppoe enable group global 
+    pppoe-client dial-pool-number 1 
+    no ip address
+    no shutdown
+
+interface Dialer 11                  /--配置客户端拨号接口--/
+    ip address negotiated         /--地址通过协商获得--/
+    ip mtu 1492
+    encapsulation ppp
+    dialer pool 1
+    ppp chap hostname R1 
+    ppp chap password cisco
+
+R2：PPPoE Server
+    username R1 password cisco 
+    ip local pool PPPOE 12.1.1.1
+
+    bba-group pppoe CCIE         /--开启PPPoE拨号组CCIE--/
+    virtual-template 1             /--将虚拟模版1加载到拨号组中--/
+
+    interface Ethernet0/0 
+        ip address 12.1.1.2 255.255.255.0
+        pppoe enable group CCIE     /--将该物理接口映射到拨号组PPPOE2，这样从该接口进入的拨号数据包就会调用该拨号组-//
+        no shutdown
+
+    interface Virtual-Template1                 /--创建虚拟模版用于拨号--/
+        ip unnumbered Ethernet0/0       /--借用接口E0/0的地址--/
+        ip mtu 1492                              /--PPP头部是8个字节，防止不必要的分片--/
+        peer default ip address pool PPPOE   /--为对端分发地址池PPPOE中的IP--/
+        ppp authentication chap

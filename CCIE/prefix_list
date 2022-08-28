@@ -1,0 +1,22 @@
+前缀列表用于精确抓取路由条目
+相比ACL:
+ACL缺点:
+1.不能精确的抓取网络掩码;
+2.不能范围性的抓取路由，例如:抓取网络号为1.1.1.0 并且网络掩码为/24-/28的路由
+
+R1(config)#Ip prefix-list c2 permit 0.0.0.0/0 le 32               //匹配所有路由
+R1(config)#Ip prefix-list c3 permit 0.0.0.0/0                     //匹配默认路由
+R1(config)#Ip prefix-list c4 permit 0.0.0.0/32 ge 32              //匹配所有主机路由
+R1(config)#Ip prefix-list c5 permit 0.0.0.0/1 ge8 le 8            //匹配所有的主A类地址
+R1(config)#Ip prefix-list c6 permit 128.0.0.0/2 ge16 le16         //匹配所有的主B类地址
+R1(config)#Ip prefix-list c7 permit 192.0.0.0/3 ge24 le24         //匹配所有的主C类地址
+R1(config)#Ip prefix-list c7 permit 192.0.0.0/3 ge24 le32         //匹配所有的主C类地址+C类的子网地址
+R1(config)#Ip prefix-list c2 permit 6.6.6.0/24 ge 28 le28           //抓取网络号为6.6.6.0掩码长度28位的路由，其他的不匹配
+R1(config)#Ip prefix-list c1 permit 1.1.1.0/24                      //仅抓取1.1.1.0/24网段
+R1(config)#Ip prefix-list c2 permit 2.2.2.0/24 ge 26                //抓取网络号为2.2.2.0掩码长度大于等于26小于等于32位的网段
+R1(config)#Ip prefix-list c2 permit 3.3.3.0/24 le 26                //抓取网络号为3.3.3.0掩码长度/24-/26的网段
+R1(config)#Ip prefix-list c2 permit 4.4.4.0/24 ge 26 le28           //抓取网络号为4.4.4.0掩码长度大于等于26小于等于28位的
+R1(config)#Ip prefix-list c2 permit 5.5.5.0/24 ge 24 le 30          //抓取网络号为5.5.5.0掩码长度在24-30间的网段
+
+
+ACL可以直接在接口调用，而前缀列表不能直接在接口调用，只能被其他列表调用

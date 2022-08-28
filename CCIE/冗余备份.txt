@@ -1,0 +1,56 @@
+HSRP思科私有，热备份路由选择协议
+
+hello建邻居，先都到standby,然后选举主备(1.优先级 2.接口IP地址，越大越优先)，有的退回去，有一个变成active,一个standby
+active不支持抢占，但standby支持抢占。一组启用HSRP的网关接口，会有一个公用的虚拟IP，和一个虚拟mac。
+hello 3s, hold time 10s,
+
+interface fa 0/1
+    standby 100 ip 100.1.1.100  //100是hsrp组，后边的地址是这一组的公用地址（virtual IP），地址可以不配，会自己从邻居learn，则命令为standby 100 ip。
+    standby 100 priority 120    //设置选举优先级，默认100， 越大越好。
+
+show standby  // 或者show standby brief
+show running config
+
+ip default-gateway 100.1.1.100  //client指网关的时候,指虚拟地址。
+
+
+hsrp跟踪和抢占
+
+//跟踪这条链路的上行链路，接口没有down但是上行链路down了，会降低优先级(120-21=99)，然后再备用设备上开启抢占（standby可以变成active），重新up之后优先级会恢复（+21），所以如果
+主备都开启抢占，恢复之后可以抢回来
+standby 100 track serial 1/1 decrement 21  //主设备上开启追踪
+standby 100 preempt    //主备用设备上都开启抢占
+
+
+HSRP 负载均衡
+在两个网关上开启两个HSRP组，两个组分别指定不同的网关为active出口，让clients一半指定A组，一半指定B组。
+
+交换机也可以起HSRP，在SVI上启用。
+
+
+VRRP 公有协议（master/backup），不如HSRP
+除了一个master，其他都是backup。
+默认开启抢占。
+只有master可以发hello，一秒一次。
+virtual Ip 可以和真实IP一样 // 不建议
+不能在交换机上启。
+
+show vrrp brief 
+
+
+GLBP gateway load balancing protocol
+自带负载均衡
+先选出AVG，是决策者，不是转发者，来负载均衡算法选AVF（可以是AVG本身）。
+最多可以拥有四个AVF(相当于HSRP的active)
+一个GLBP组内只能有一个virtual IP 但最多有四个virtual mac地址， 每个AVF有唯一一个virtual mac地址，不同client访问虚拟ip时，由AVG通过算法来决定走哪个AVF
+算法
+1.每个client固定
+2.轮询
+3.基于权重
+
+不是很稳定，建议HSRP
+命令：
+int fa 0/1
+    glbp 100 ip xxxx  //虚拟ip
+    glbp 100 priority xx  //优先级，选AVG
+    glbp 100 weighting xx // 权重，最高的四个为AVF

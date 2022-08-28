@@ -1,0 +1,41 @@
+
+show span   
+
+1.选根桥
+    BPDU 每2s发一次，选根桥
+    1.BID参数（bridge priority+ bridge mac）优先级默认32768 ，相同比mac地址，越小越优先。
+    根桥上所有端口都是指定端口，不会block，一直是转发状态
+2.非根桥
+    非根桥上连接根桥的端口叫根端口，要选举，通过bpdu选
+    根据累加cost来选，10M-100（cost），100M--（19），所以累加cost越小越好
+    一根线上有一个根端口一根指定端口
+3.两台非根桥断哪个口
+    1.先比较根桥到这个两SW的cost，cost小的那个保留，断另一个SW上的指定端口
+    2.如果cost都一样，比较这两个mac地址，小的那个保留，断另一个SW上的指定端口。
+
+PVST 每个vlan一颗生成树（cisco），默认开启这个
+    priority 默认值，32768+vlan编号，来决定不同根桥的值。
+    对不同的vlan实现不同的FWD和BLK结果，负载均衡
+
+PVST+
+    在pvst基础上增加了三个功能 portfast, uplinkfast, backbonefast
+    https://www.bilibili.com/read/cv8048613/
+    兼容其他生成树
+
+MST 多实例生成树，多个vlan组成一个实例
+
+rstp
+    快速生成树，加入收敛机制。
+
+
+根桥优先级，有主备根桥，用优先级去调整，4096的倍数。
+
+
+特性：
+    portfast:正常默认侦听学习30s，portfast会默认开启，省这30s,但有隐患，所以一般配合bpduguard使用。
+    backbonefast
+    uplinkfast
+    bpduguard:如果收到bpdu,则会主动阻塞接口
+    bpdufilter
+    rootguard
+    loopguard
